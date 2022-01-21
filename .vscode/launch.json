@@ -6,16 +6,17 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Run Extension",
+			"name": "Debug Extensions",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}"
+				"--extensionDevelopmentPath=${workspaceFolder}/ui-extension",
+				"--extensionDevelopmentPath=${workspaceFolder}/workspace-extension"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/**/*.js"
+				"${workspaceFolder}/ui-extension/out/**/*.js",
+				"${workspaceFolder}/workspace-extension/out/**/*.js"
 			],
-			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
 			"name": "Extension Tests",
@@ -29,6 +30,20 @@
 				"${workspaceFolder}/out/test/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
-		}
+		},
+		{
+			"name": "Watch Plugins and Run Extension Host",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}/ui-extension",
+				"--extensionDevelopmentPath=${workspaceFolder}/workspace-extension"
+			],
+			"outFiles": [
+				"${workspaceFolder}/ui-extension/out/**/*.js",
+				"${workspaceFolder}/workspace-extension/out/**/*.js"
+			],
+			"preLaunchTask": "${defaultBuildTask}",
+		},
 	]
 }

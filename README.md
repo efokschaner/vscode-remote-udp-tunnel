@@ -1,6 +1,10 @@
 # remote-udp-tunnel README
 
-This is the README for your extension "remote-udp-tunnel". After writing up a brief description, we recommend including the following sections.
+Like the existing "Forward a port" feature in vscode, but for UDP.
+
+## Development
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Features
 

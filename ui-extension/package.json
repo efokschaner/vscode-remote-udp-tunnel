@@ -1,0 +1,37 @@
+{
+	"name": "remote-udp-tunnel-ui",
+	"publisher": "efokschaner",
+	"displayName": "Remote UDP Tunnel",
+	"description": "UDP tunnels for VSCode Remote Development",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.63.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"extensionKind": [
+		"ui"
+	],
+	"activationEvents": [
+		"onCommand:remote-udp-tunnel-ui.openLocalProxy"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "remote-udp-tunnel-ui.openLocalProxy",
+				"title": "Remote UDP Tunnel: Open Local Proxy"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"lint": "eslint src --ext ts",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {}
+}
