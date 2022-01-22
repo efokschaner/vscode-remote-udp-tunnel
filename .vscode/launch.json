@@ -10,13 +10,15 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}/ui-extension",
-				"--extensionDevelopmentPath=${workspaceFolder}/workspace-extension"
+				"--extensionDevelopmentPath=${config:vscode-remote-udp-tunnel.development.workspaceFolderOnUiHost}/ui-extension",
+				"--extensionDevelopmentPath=${workspaceFolder}/workspace-extension",
+				"${workspaceFolder}/test-workspace"
 			],
 			"outFiles": [
 				"${workspaceFolder}/ui-extension/out/**/*.js",
 				"${workspaceFolder}/workspace-extension/out/**/*.js"
 			],
+			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
 			"name": "Extension Tests",
@@ -27,23 +29,21 @@
 				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
 			],
 			"outFiles": [
-				"${workspaceFolder}/out/test/**/*.js"
+				"${workspaceFolder}/ui-extension/out/**/*.js",
+				"${workspaceFolder}/workspace-extension/out/**/*.js"
 			],
 			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
-			"name": "Watch Plugins and Run Extension Host",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}/ui-extension",
-				"--extensionDevelopmentPath=${workspaceFolder}/workspace-extension"
-			],
+			"type": "node",
+			"request": "attach",
+			"name": "Attach to Extension Host",
+			"protocol": "inspector",
+			"port": 5870,
+			"restart": true,
 			"outFiles": [
-				"${workspaceFolder}/ui-extension/out/**/*.js",
-				"${workspaceFolder}/workspace-extension/out/**/*.js"
-			],
-			"preLaunchTask": "${defaultBuildTask}",
-		},
+				"${workspaceRoot}/out/src"
+			]
+		}
 	]
 }

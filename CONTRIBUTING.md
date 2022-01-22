@@ -1,15 +1,14 @@
-
 This extension is actually 2 extensions which makes development a bit complicated.
+So far, the best setup I have found is captured in the launch.json.
 
-So far, the best setup I have found is:
+Before launching with `F5` set up a configuration in your vscode preferences with the location of the vscode-remote-udp-tunnel workspace on the host machine:
 
-```bash
-npm run watch
+Eg.
+
+```json
+{
+  "vscode-remote-udp-tunnel.development.workspaceFolderOnUiHost": "C:\\dev\\efokschaner\\vscode-remote-udp-tunnel"
+}
 ```
 
-From a **non-remote** vscode instance, launch the "Debug Extensions" target defined in .vscode/launch.json
-
-Or to run without debugging:
-```
-code --extensionDevelopmentPath=C:\path\to\vscode-remote-udp-tunnel\ui-extension --extensionDevelopmentPath=C:\path\to\vscode-remote-udp-tunnel\workspace-extension
-```
+Ensure you have this repo opened in the root devcontainer and launch with `F5`.
