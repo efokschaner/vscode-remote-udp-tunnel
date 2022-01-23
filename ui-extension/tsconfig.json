@@ -6,5 +6,8 @@
 	},
 	"exclude": [
 		"out"
+	],
+	"include": [
+		"src/**/*.ts"
 	]
 }

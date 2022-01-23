@@ -18,12 +18,7 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"commands": [
-			{
-				"command": "remote-udp-tunnel-ui.openLocalProxy",
-				"title": "Remote UDP Tunnel: Open Local Proxy"
-			}
-		]
+		"commands": []
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

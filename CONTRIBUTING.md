@@ -1,3 +1,12 @@
+# Contributing
+
+## Setup for Development
+
+- Open the devcontainer
+- Run `npm install` in the root dir
+
+## Debugging
+
 This extension is actually 2 extensions which makes development a bit complicated.
 So far, the best setup I have found is captured in the launch.json.
 

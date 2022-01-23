@@ -2,32 +2,39 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
+import { ProxyServer, getUdpReverseProxyForTcp } from "./ui-proxy";
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log(
-    'Congratulations, your extension "remote-udp-tunnel-ui" is now active!'
+  let proxies = new Array<ProxyServer>();
+  context.subscriptions.push({
+    dispose: () => {
+      proxies.forEach((p) => {
+        p.close();
+      });
+    },
+  });
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "remote-udp-tunnel-ui.openLocalProxy",
+      async (desiredUdpPort?: unknown, targetTcpPort?: unknown) => {
+        if (typeof desiredUdpPort !== "number") {
+          throw new Error(`Expected a number but got ${desiredUdpPort}`);
+        }
+        if (typeof targetTcpPort !== "number") {
+          throw new Error(`Expected a number but got ${targetTcpPort}`);
+        }
+        let proxy = await getUdpReverseProxyForTcp(
+          desiredUdpPort,
+          targetTcpPort
+        );
+        proxies.push(proxy);
+        return proxy.port;
+      }
+    )
   );
-
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand(
-    "remote-udp-tunnel-ui.openLocalProxy",
-    () => {
-      console.log(process);
-
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      vscode.window.showInformationMessage(
-        "Hello World from Remote UDP Tunnel UI!"
-      );
-    }
-  );
-
-  context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
