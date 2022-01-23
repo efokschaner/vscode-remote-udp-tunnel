@@ -43,15 +43,37 @@ export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
         newTcpSocket.on("close", teardownConn);
 
         // ROUTING
+        let bytesToNextHeader = 0;
         newTcpSocket.on("data", (data) => {
-          socket.send(data, rinfo.port, rinfo.address);
+          // Split tcp stream back in to datagrams
+          // Eliminates any artificial combination by TCP
+          // May add fragmentation which did not previously exist
+          let readIndex = 0;
+          while (readIndex < data.length) {
+            if (bytesToNextHeader === 0) {
+              bytesToNextHeader = data.readUInt16BE(0);
+              readIndex += 2;
+            }
+            let bytesToSend = Math.min(
+              data.length - readIndex,
+              bytesToNextHeader
+            );
+            socket.send(
+              data.slice(readIndex, readIndex + bytesToSend),
+              rinfo.port,
+              rinfo.address
+            );
+            readIndex += bytesToSend;
+            bytesToNextHeader -= bytesToSend;
+          }
         });
 
         // STARTUP
-        newTcpSocket.connect(targetPort, "127.0.0.1", () => {
-          newTcpSocket.write("");
-        });
+        newTcpSocket.connect(targetPort, "127.0.0.1");
       }
+      let lengthHeader = Buffer.alloc(2);
+      lengthHeader.writeUInt16BE(msg.length);
+      tcpSocket.write(lengthHeader);
       tcpSocket.write(msg);
     });
 

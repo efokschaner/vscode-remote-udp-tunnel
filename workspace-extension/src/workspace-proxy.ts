@@ -52,10 +52,35 @@ export function getTcpReverseProxyForUdp(target: Hostname) {
 
       // ROUTING
       udpSocket.on("message", (msg) => {
+        let lengthHeader = Buffer.alloc(2);
+        lengthHeader.writeUInt16BE(msg.length);
+        tcpSocket.write(lengthHeader);
         tcpSocket.write(msg);
       });
+
+      let bytesToNextHeader = 0;
       tcpSocket.on("data", (data) => {
-        udpSocket.send(data, target.port, target.host);
+        // Split tcp stream back in to datagrams
+        // Eliminates any artificial combination by TCP
+        // May add fragmentation which did not previously exist
+        let readIndex = 0;
+        while (readIndex < data.length) {
+          if (bytesToNextHeader === 0) {
+            bytesToNextHeader = data.readUInt16BE(0);
+            readIndex += 2;
+          }
+          let bytesToSend = Math.min(
+            data.length - readIndex,
+            bytesToNextHeader
+          );
+          udpSocket.send(
+            data.slice(readIndex, readIndex + bytesToSend),
+            target.port,
+            target.host
+          );
+          readIndex += bytesToSend;
+          bytesToNextHeader -= bytesToSend;
+        }
       });
 
       // STARTUP

@@ -16,4 +16,5 @@ On the same machine as the UI:
 
 ```bash
 iperf3 --client 127.0.0.1 --udp --port 50288
+# Also try adding the `--reverse` flag to test the opposite direction
 ```
