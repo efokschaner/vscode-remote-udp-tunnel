@@ -1,16 +1,17 @@
 import * as dgram from "dgram";
 import * as net from "net";
 
+import {
+  Hostname,
+  encodeDatagramToTcpStream,
+  decodeUdpFromTcp,
+} from "remote-udp-tunnel-lib";
+
 function hasOwnProperty<X extends {}, Y extends PropertyKey>(
   obj: X,
   prop: Y
 ): obj is X & Record<Y, unknown> {
   return obj.hasOwnProperty(prop);
-}
-
-export interface Hostname {
-  host: string;
-  port: number;
 }
 
 export interface ProxyServer {
@@ -52,36 +53,9 @@ export function getTcpReverseProxyForUdp(target: Hostname) {
 
       // ROUTING
       udpSocket.on("message", (msg) => {
-        let lengthHeader = Buffer.alloc(2);
-        lengthHeader.writeUInt16BE(msg.length);
-        tcpSocket.write(lengthHeader);
-        tcpSocket.write(msg);
+        encodeDatagramToTcpStream(msg, tcpSocket);
       });
-
-      let bytesToNextHeader = 0;
-      tcpSocket.on("data", (data) => {
-        // Split tcp stream back in to datagrams
-        // Eliminates any artificial combination by TCP
-        // May add fragmentation which did not previously exist
-        let readIndex = 0;
-        while (readIndex < data.length) {
-          if (bytesToNextHeader === 0) {
-            bytesToNextHeader = data.readUInt16BE(0);
-            readIndex += 2;
-          }
-          let bytesToSend = Math.min(
-            data.length - readIndex,
-            bytesToNextHeader
-          );
-          udpSocket.send(
-            data.slice(readIndex, readIndex + bytesToSend),
-            target.port,
-            target.host
-          );
-          readIndex += bytesToSend;
-          bytesToNextHeader -= bytesToSend;
-        }
-      });
+      decodeUdpFromTcp(tcpSocket, udpSocket, target);
 
       // STARTUP
       udpSocket.connect(target.port, target.host);

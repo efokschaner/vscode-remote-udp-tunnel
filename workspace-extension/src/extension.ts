@@ -2,11 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
-import {
-  getTcpReverseProxyForUdp,
-  Hostname,
-  ProxyServer,
-} from "./workspace-proxy";
+import { Hostname } from "remote-udp-tunnel-lib";
+
+import { getTcpReverseProxyForUdp, ProxyServer } from "./workspace-proxy";
 
 const MIN_PORT_INCLUSIVE = 1;
 const MAX_PORT_EXCLUSIVE = 65536;

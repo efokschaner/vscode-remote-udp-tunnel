@@ -9,10 +9,5 @@
 	],
 	"include": [
 		"src/**/*.ts"
-	],
-	"references": [
-		{
-			"path": "../lib"
-		},
 	]
 }
