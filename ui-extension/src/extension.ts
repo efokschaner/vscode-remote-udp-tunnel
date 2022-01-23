@@ -2,7 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
-import { ProxyServer, getUdpReverseProxyForTcp } from "./ui-proxy";
+import { ProxyServer } from "remote-udp-tunnel-lib";
+
+import { getUdpReverseProxyForTcp } from "./ui-proxy";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -31,7 +33,24 @@ export function activate(context: vscode.ExtensionContext) {
           targetTcpPort
         );
         proxies.push(proxy);
-        return proxy.port;
+        return proxy.listenPort;
+      }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "remote-udp-tunnel-ui.closeLocalProxy",
+      async (targetTcpPort?: unknown) => {
+        if (typeof targetTcpPort !== "number") {
+          throw new Error(`Expected a number but got ${targetTcpPort}`);
+        }
+        for (const [index, proxy] of proxies.entries()) {
+          if (proxy.target.port === targetTcpPort) {
+            proxy.close();
+            proxies.splice(index, 1);
+          }
+        }
       }
     )
   );

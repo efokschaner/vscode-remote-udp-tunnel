@@ -14,6 +14,7 @@
 		"ui"
 	],
 	"activationEvents": [
+		"onCommand:remote-udp-tunnel-ui.closeLocalProxy",
 		"onCommand:remote-udp-tunnel-ui.openLocalProxy"
 	],
 	"main": "./out/extension.js",

@@ -15,7 +15,8 @@
 	],
 	"activationEvents": [
 		"onStartupFinished",
-		"onCommand:remote-udp-tunnel.forwardPort"
+		"onCommand:remote-udp-tunnel.forwardPort",
+		"onCommand:remote-udp-tunnel.stopForwardingPort"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -23,6 +24,10 @@
 			{
 				"command": "remote-udp-tunnel.forwardPort",
 				"title": "Remote UDP Tunnel: Forward a Port"
+			},
+			{
+				"command": "remote-udp-tunnel.stopForwardingPort",
+				"title": "Remote UDP Tunnel: Stop Forwarding Port"
 			}
 		]
 	},

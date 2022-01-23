@@ -6,6 +6,12 @@ export interface Hostname {
   port: number;
 }
 
+export interface ProxyServer {
+  listenPort: number;
+  target: Hostname;
+  close(): void;
+}
+
 export function decodeUdpFromTcp(
   srcTcpSocket: net.Socket,
   dstUdpSocket: dgram.Socket,

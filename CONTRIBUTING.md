@@ -18,3 +18,7 @@ is actually a different folder to the node_modules on the host's filesystem.
 So far, the best setup I have found is captured in the launch.json + devcontainer setup.
 
 Launch with `F5`.
+
+## Testing
+
+See the `test-workspace` for more info on testing.

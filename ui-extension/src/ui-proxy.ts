@@ -5,12 +5,8 @@ import * as net from "net";
 import {
   encodeDatagramToTcpStream,
   decodeUdpFromTcp,
+  ProxyServer,
 } from "remote-udp-tunnel-lib";
-
-export interface ProxyServer {
-  port: number;
-  close(): void;
-}
 
 export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
   // Map of udp srcaddress:srcport to tcp socket.
@@ -63,7 +59,8 @@ export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
     socket.bind(port, "127.0.0.1", () => {
       let address = socket.address();
       resolve({
-        port: address.port,
+        listenPort: address.port,
+        target: { host: "127.0.0.1", port: targetPort },
         close() {
           socket.close();
           for (let tcpSocket of tcpSockets.values()) {

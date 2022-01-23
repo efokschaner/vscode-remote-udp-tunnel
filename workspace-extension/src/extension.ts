@@ -2,9 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
-import { Hostname } from "remote-udp-tunnel-lib";
+import { Hostname, ProxyServer } from "remote-udp-tunnel-lib";
 
-import { getTcpReverseProxyForUdp, ProxyServer } from "./workspace-proxy";
+import { getTcpReverseProxyForUdp } from "./workspace-proxy";
 
 const MIN_PORT_INCLUSIVE = 1;
 const MAX_PORT_EXCLUSIVE = 65536;
@@ -44,20 +44,39 @@ function validateTarget(input: string): string | undefined {
   }
 }
 
+async function resolveTargetParam(targetParam?: unknown): Promise<Hostname> {
+  if (targetParam === undefined) {
+    targetParam = await vscode.window.showInputBox({
+      prompt: "Port number or address (eg. 3000 or 10.10.10.10:2000)",
+      validateInput: validateTarget,
+    });
+    if (targetParam === undefined) {
+      throw new Error("No Port number or address provided");
+    }
+  }
+  let target: Hostname | undefined = undefined;
+  if (typeof targetParam === "string") {
+    let maybeTarget = parseTarget(targetParam);
+    if (typeof maybeTarget === "string") {
+      throw new Error(maybeTarget);
+    }
+    target = maybeTarget;
+  } else if (typeof targetParam === "number") {
+    target = { host: "127.0.0.1", port: targetParam };
+  }
+  if (target === undefined) {
+    throw new Error("Could not interpret port number or address");
+  }
+  return target;
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   let proxies = new Array<ProxyServer>();
   context.subscriptions.push({
     dispose: () => {
-      proxies.forEach((p) => {
-        p.close();
-        // Try to close the tcp tunnel too
-        vscode.commands.executeCommand(
-          "remote.tunnel.closeCommandPalette",
-          p.port
-        );
-      });
+      proxies.forEach((p) => p.close());
     },
   });
 
@@ -65,52 +84,73 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "remote-udp-tunnel.forwardPort",
       async (targetParam?: unknown) => {
-        if (targetParam === undefined) {
-          targetParam = await vscode.window.showInputBox({
-            prompt: "Port number or address (eg. 3000 or 10.10.10.10:2000)",
-            validateInput: validateTarget,
-          });
-          if (targetParam === undefined) {
-            throw new Error("No Port number or address provided");
-          }
-        }
-        let target: Hostname | undefined = undefined;
-        if (typeof targetParam === "string") {
-          let maybeTarget = parseTarget(targetParam);
-          if (typeof maybeTarget === "string") {
-            throw new Error(maybeTarget);
-          }
-          target = maybeTarget;
-        } else if (typeof targetParam === "number") {
-          target = { host: "127.0.0.1", port: targetParam };
-        }
-        if (target === undefined) {
-          throw new Error("Could not interpret port number or address");
-        }
-
+        let target = await resolveTargetParam(targetParam);
         let proxy = await getTcpReverseProxyForUdp(target);
-        proxies.push(proxy);
-        let message = `Proxy to ${target.host}:${target.port}/udp listening on ${proxy.port}/tcp`;
-        console.log(message);
+        let cleanup = new Array<{ (): void }>(() => proxy.close());
+        try {
+          let message = `Proxy to ${target.host}:${target.port}/udp listening on ${proxy.listenPort}/tcp`;
+          console.log(message);
+          // Create tunnel
+          // The benefit of this method vs remote.tunnel.forwardCommandPalette is that
+          // we can discover the port which was allocated on the ui-side
+          let externalUri = await vscode.env.asExternalUri(
+            vscode.Uri.from({
+              scheme: "http",
+              authority: `127.0.0.1:${proxy.listenPort}`,
+            })
+          );
+          cleanup.push(() => {
+            // See https://github.com/microsoft/vscode/blob/9b75bd1f813e683bf46897d85387089ec083fb24/src/vs/workbench/contrib/remote/browser/tunnelView.ts#L1189
+            vscode.commands.executeCommand("remote.tunnel.closeInline", {
+              remoteHost: "127.0.0.1",
+              remotePort: proxy.listenPort,
+            });
+          });
+          let uiTcpTunnelPort = parseInt(externalUri.authority.split(":")[1]);
+          let selectedUiUdpPort = await vscode.commands.executeCommand(
+            "remote-udp-tunnel-ui.openLocalProxy",
+            target.port,
+            uiTcpTunnelPort
+          );
+          cleanup.push(async () => {
+            await vscode.commands.executeCommand(
+              "remote-udp-tunnel-ui.closeLocalProxy",
+              uiTcpTunnelPort
+            );
+          });
+          vscode.window.showInformationMessage(
+            `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port}/udp in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.listenPort}`
+          );
+          let onProxyCloseCleanup = cleanup;
+          cleanup = [];
+          proxies.push({
+            listenPort: proxy.listenPort,
+            target: proxy.target,
+            close() {
+              onProxyCloseCleanup.forEach((f) => f());
+            },
+          });
+        } finally {
+          cleanup.forEach((f) => f());
+        }
+      }
+    )
+  );
 
-        // Create tunnel
-        // The benefit of this method vs remote.tunnel.forwardCommandPalette is that
-        // we can discover the port which was allocated on the ui-side
-        let externalUri = await vscode.env.asExternalUri(
-          vscode.Uri.from({
-            scheme: "http",
-            authority: `127.0.0.1:${proxy.port}`,
-          })
-        );
-        let uiTcpTunnelPort = parseInt(externalUri.authority.split(":")[1]);
-        let selectedUiUdpPort = await vscode.commands.executeCommand(
-          "remote-udp-tunnel-ui.openLocalProxy",
-          target.port,
-          uiTcpTunnelPort
-        );
-        vscode.window.showInformationMessage(
-          `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port} in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.port}`
-        );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "remote-udp-tunnel.stopForwardingPort",
+      async (targetParam?: unknown) => {
+        let target = await resolveTargetParam(targetParam);
+        for (let [index, proxy] of proxies.entries()) {
+          if (
+            proxy.target.host === target.host &&
+            proxy.target.port === target.port
+          ) {
+            proxy.close();
+            proxies.splice(index, 1);
+          }
+        }
       }
     )
   );

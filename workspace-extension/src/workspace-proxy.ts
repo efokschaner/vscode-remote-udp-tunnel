@@ -5,6 +5,7 @@ import {
   Hostname,
   encodeDatagramToTcpStream,
   decodeUdpFromTcp,
+  ProxyServer,
 } from "remote-udp-tunnel-lib";
 
 function hasOwnProperty<X extends {}, Y extends PropertyKey>(
@@ -12,11 +13,6 @@ function hasOwnProperty<X extends {}, Y extends PropertyKey>(
   prop: Y
 ): obj is X & Record<Y, unknown> {
   return obj.hasOwnProperty(prop);
-}
-
-export interface ProxyServer {
-  port: number;
-  close(): void;
 }
 
 /**
@@ -75,7 +71,8 @@ export function getTcpReverseProxyForUdp(target: Hostname) {
           throw new Error("Cannot determine our own port");
         }
         resolve({
-          port: tcpServerAddr.port,
+          listenPort: tcpServerAddr.port,
+          target: target,
           close: () => {
             tcpServer.close();
           },
