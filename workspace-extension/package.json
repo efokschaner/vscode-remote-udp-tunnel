@@ -29,7 +29,26 @@
 				"command": "remote-udp-tunnel.stopForwardingPort",
 				"title": "Remote UDP Tunnel: Stop Forwarding Port"
 			}
-		]
+		],
+		"views": {
+			"explorer": [
+				{
+					"id": "remoteUdpTunnelWorkspace",
+					"name": "UDP Ports (Remote)",
+					"when": "",
+					"icon": "${debug-disconnect}",
+					"contextualTitle": "UDP Ports (Remote)"
+				}
+			]
+		},
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "remote-udp-tunnel.stopForwardingPort",
+					"when": "view == remoteUdpTunnelWorkspace"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run esbuild-base -- --minify",
