@@ -60,7 +60,9 @@ export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
       let address = socket.address();
       resolve({
         listenPort: address.port,
+        listenProtocol: "udp",
         target: { host: "127.0.0.1", port: targetPort },
+        targetProtocol: "tcp",
         close() {
           socket.close();
           for (let tcpSocket of tcpSockets.values()) {

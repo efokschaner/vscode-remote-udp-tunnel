@@ -23,11 +23,13 @@
 		"commands": [
 			{
 				"command": "remote-udp-tunnel.forwardPort",
-				"title": "Remote UDP Tunnel: Forward a Port"
+				"title": "Forward a Port",
+				"category": "Remote UDP Tunnel"
 			},
 			{
 				"command": "remote-udp-tunnel.stopForwardingPort",
-				"title": "Remote UDP Tunnel: Stop Forwarding Port"
+				"title": "Stop Forwarding Port",
+				"category": "Remote UDP Tunnel"
 			}
 		],
 		"views": {

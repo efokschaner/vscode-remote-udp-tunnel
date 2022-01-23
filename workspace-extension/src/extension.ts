@@ -2,7 +2,14 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 
-import { Hostname, ProxyServer } from "remote-udp-tunnel-lib";
+import {
+  Hostname,
+  ObservableArray,
+  ProxyServer,
+  ProxyTreeItem,
+  ProxiesDataProvider,
+  driveTreeViewTitle,
+} from "remote-udp-tunnel-lib";
 
 import { getTcpReverseProxyForUdp } from "./workspace-proxy";
 
@@ -73,101 +80,21 @@ async function resolveTargetParam(targetParam?: unknown): Promise<Hostname> {
   return target;
 }
 
-function targetString(target: Hostname) {
-  return target.host === "127.0.0.1"
-    ? target.port.toString()
-    : `${target.host}:${target.port}`;
-}
-
-class ProxyTreeItem extends vscode.TreeItem {
-  constructor(public readonly proxy: ProxyServer) {
-    super(
-      `${proxy.listenPort}/tcp -> ${targetString(proxy.target)}/udp`,
-      vscode.TreeItemCollapsibleState.None
-    );
-    this.tooltip = `A proxy in the remote workspace which bridges ${this.label}`;
-    this.description = "";
-  }
-
-  iconPath = new vscode.ThemeIcon("remote");
-}
-
-class ObservableArray<T> implements Iterable<T> {
-  private array = new Array<T>();
-  constructor() {}
-
-  private _onDidChange = new vscode.EventEmitter<void>();
-  readonly onDidChange = this._onDidChange.event;
-
-  // Iteration
-  [Symbol.iterator](): Iterator<T, any, undefined> {
-    return this.array[Symbol.iterator]();
-  }
-  entries(): IterableIterator<[number, T]> {
-    return this.array.entries();
-  }
-  forEach(
-    callbackfn: (value: T, index: number, array: T[]) => void,
-    thisArg?: any
-  ): void {
-    return this.array.forEach(callbackfn, thisArg);
-  }
-
-  // Mutation
-  splice(start: number, deleteCount?: number): T[] {
-    let result = this.array.splice(start, deleteCount);
-    this._onDidChange.fire();
-    return result;
-  }
-  push(...items: T[]): number {
-    let result = this.array.push(...items);
-    this._onDidChange.fire();
-    return result;
-  }
-}
-
-class ProxiesDataProvider implements vscode.TreeDataProvider<ProxyTreeItem> {
-  constructor(private proxies: ObservableArray<ProxyServer>) {
-    proxies.onDidChange(() => {
-      this._onDidChangeTreeData.fire();
-    });
-  }
-
-  getTreeItem(element: ProxyTreeItem): vscode.TreeItem {
-    return element;
-  }
-
-  getChildren(element?: ProxyTreeItem): Thenable<ProxyTreeItem[]> {
-    let results = [];
-    if (element === undefined) {
-      for (let proxy of this.proxies) {
-        results.push(new ProxyTreeItem(proxy));
-      }
-    }
-    return Promise.resolve(results);
-  }
-
-  private _onDidChangeTreeData = new vscode.EventEmitter<
-    ProxyTreeItem | undefined | null | void
-  >();
-  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
-}
-
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   let proxies = new ObservableArray<ProxyServer>();
-
-  vscode.window.registerTreeDataProvider(
-    "remoteUdpTunnelWorkspace",
-    new ProxiesDataProvider(proxies)
-  );
-
   context.subscriptions.push({
     dispose: () => {
       proxies.forEach((p) => p.close());
     },
   });
+
+  let treeView = vscode.window.createTreeView("remoteUdpTunnelWorkspace", {
+    treeDataProvider: new ProxiesDataProvider(proxies),
+  });
+  driveTreeViewTitle(treeView, proxies);
+  context.subscriptions.push(treeView);
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -213,8 +140,7 @@ export function activate(context: vscode.ExtensionContext) {
           let onProxyCloseCleanup = cleanup;
           cleanup = [];
           proxies.push({
-            listenPort: proxy.listenPort,
-            target: proxy.target,
+            ...proxy,
             close() {
               onProxyCloseCleanup.forEach((f) => f());
             },

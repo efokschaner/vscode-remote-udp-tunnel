@@ -1,7 +1,7 @@
 {
 	"name": "remote-udp-tunnel-ui",
 	"publisher": "efokschaner",
-	"displayName": "Remote UDP Tunnel",
+	"displayName": "Remote UDP Tunnel (Local Sub-Component)",
 	"description": "UDP tunnels for VSCode Remote Development",
 	"version": "0.0.1",
 	"engines": {
@@ -19,7 +19,36 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"commands": []
+		"commands": [
+			{
+				"command": "remote-udp-tunnel-ui.closeLocalProxy",
+				"title": "Close Local Proxy",
+				"category": "Remote UDP Tunnel"
+			}
+		],
+		"views": {
+			"explorer": [
+				{
+					"id": "remoteUdpTunnelUi",
+					"name": "UDP Ports (Local)",
+					"when": ""
+				}
+			]
+		},
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "remote-udp-tunnel-ui.closeLocalProxy",
+					"when": "false"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "remote-udp-tunnel-ui.closeLocalProxy",
+					"when": "view == remoteUdpTunnelUi"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run esbuild-base -- --minify",

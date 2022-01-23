@@ -72,7 +72,9 @@ export function getTcpReverseProxyForUdp(target: Hostname) {
         }
         resolve({
           listenPort: tcpServerAddr.port,
+          listenProtocol: "tcp",
           target: target,
+          targetProtocol: "udp",
           close: () => {
             tcpServer.close();
           },

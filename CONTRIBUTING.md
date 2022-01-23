@@ -22,3 +22,8 @@ Launch with `F5`.
 ## Testing
 
 See the `test-workspace` for more info on testing.
+
+## Architecture
+
+This is evolving as I discover what makes the most sense for VSCode.
+So far, the high level structure is to put the majority of the UX and behaviour in the "workspace" extension, the one which runs in the remote workspace, and to use the "ui" extension as a minimal subcomponent to handle what can only be handled on the "local" side of the extension.
