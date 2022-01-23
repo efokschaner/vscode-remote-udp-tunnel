@@ -79,8 +79,24 @@ export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
  * The server function as a reverse proxy to a TCP server at 127.0.0.1:@param targetPort
  */
 export async function getUdpReverseProxyForTcp(
-  port: number,
+  desiredPort: number,
   targetPort: number
 ) {
-  return tryGetUdpReverseProxyForTcp(port, targetPort);
+  let lastError: unknown = undefined;
+  for (let portToTry = desiredPort; portToTry < desiredPort + 20; ++portToTry) {
+    try {
+      return await tryGetUdpReverseProxyForTcp(portToTry, targetPort);
+    } catch (err) {
+      lastError = err;
+      if (err instanceof Error) {
+        if (err.message.indexOf("EADDRINUSE") !== -1) {
+          console.warn("Trying a different port due to EADDRINUSE: %s", err);
+          // Try next port
+          continue;
+        }
+      }
+      throw err;
+    }
+  }
+  throw lastError;
 }
