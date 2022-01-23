@@ -1,23 +1,20 @@
 # Contributing
 
+This extension is actually 2 extensions, one running inside the remote environment (probably linux) and one running on the local vscode instance (eg. windows)
+which makes development a bit complicated, as node_modules need to be loaded on either platform.
+
+In order to give both platforms separate node_modules dirs we use the bindmount configured in the devcontainer.json so that the devcontainer's node_modules dir
+is actually a different folder to the node_modules on the host's filesystem.
+
 ## Setup for Development
 
+- Clone the repo on your local OS.
+- Run `npm install` to set up node_modules for the code which runs on the host machine.
 - Open the devcontainer
-- Run `npm install` in the root dir
+- Run `npm install` to set up node_modules for the code which runs on the target environment.
 
 ## Debugging
 
-This extension is actually 2 extensions which makes development a bit complicated.
-So far, the best setup I have found is captured in the launch.json.
+So far, the best setup I have found is captured in the launch.json + devcontainer setup.
 
-Before launching with `F5` set up a configuration in your vscode preferences with the location of the vscode-remote-udp-tunnel workspace on the host machine:
-
-Eg.
-
-```json
-{
-  "vscode-remote-udp-tunnel.development.workspaceFolderOnUiHost": "C:\\dev\\efokschaner\\vscode-remote-udp-tunnel"
-}
-```
-
-Ensure you have this repo opened in the root devcontainer and launch with `F5`.
+Launch with `F5`.

@@ -1,6 +1,7 @@
 out
 dist
 node_modules
+.devcontainer_node_modules
 .vscode-test/
 *.vsix
 *.tsbuildinfo

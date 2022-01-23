@@ -10,7 +10,7 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"--extensionDevelopmentPath=${config:vscode-remote-udp-tunnel.development.workspaceFolderOnUiHost}/ui-extension",
+				"--extensionDevelopmentPath=${env:WORKSPACE_FOLDER_ON_HOST}/ui-extension",
 				"--extensionDevelopmentPath=${workspaceFolder}/workspace-extension",
 				"${workspaceFolder}/test-workspace"
 			],
