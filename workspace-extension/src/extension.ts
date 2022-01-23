@@ -88,6 +88,8 @@ class ProxyTreeItem extends vscode.TreeItem {
     this.tooltip = `A proxy in the remote workspace which bridges ${this.label}`;
     this.description = "";
   }
+
+  iconPath = new vscode.ThemeIcon("remote");
 }
 
 class ObservableArray<T> implements Iterable<T> {

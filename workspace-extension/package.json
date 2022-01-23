@@ -35,9 +35,7 @@
 				{
 					"id": "remoteUdpTunnelWorkspace",
 					"name": "UDP Ports (Remote)",
-					"when": "",
-					"icon": "${debug-disconnect}",
-					"contextualTitle": "UDP Ports (Remote)"
+					"when": ""
 				}
 			]
 		},
