@@ -37,11 +37,21 @@
 				{
 					"id": "remoteUdpTunnelWorkspace",
 					"name": "UDP Ports (Remote)",
-					"when": ""
+					"when": "remoteName && remoteName !== ''"
 				}
 			]
 		},
 		"menus": {
+			"commandPalette": [
+				{
+					"command": "remote-udp-tunnel.forwardPort",
+					"when": "remoteName && remoteName !== ''"
+				},
+				{
+					"command": "remote-udp-tunnel.stopForwardingPort",
+					"when": "remoteName && remoteName !== ''"
+				}
+			],
 			"view/item/context": [
 				{
 					"command": "remote-udp-tunnel.stopForwardingPort",
