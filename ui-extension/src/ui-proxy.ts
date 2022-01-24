@@ -6,16 +6,89 @@ import {
   encodeDatagramToTcpStream,
   decodeUdpFromTcp,
   ProxyServer,
+  Hostname,
 } from "remote-udp-tunnel-lib";
 
-export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
-  // Map of udp srcaddress:srcport to tcp socket.
-  // My having a separate connection per-sender we can infer the destination
-  // of response packets when convering tcp to udp on the return leg.
-  let tcpSockets = new Map<string, net.Socket>();
+class SocketEntry {
+  public accessedTimeEpochMS = Date.now();
+  public socket = new net.Socket();
+}
 
+class TcpSocketPool {
+  // Map of udp srcaddress:srcport to tcp socket.
+  // By having a separate connection per-sender we can infer the destination
+  // of response packets when converting tcp to udp on the return leg.
+  private sockets = new Map<string, SocketEntry>();
+
+  constructor(private udpSocket: dgram.Socket, private targetPort: number) {}
+
+  public close() {
+    clearTimeout(this.sweepIntervalHandle);
+    for (let tcpSocket of this.sockets.values()) {
+      tcpSocket.socket.destroy();
+    }
+    this.sockets.clear();
+  }
+
+  /**
+   * Get or create a net.Socket to channel data for the given udpAddress
+   */
+  public getOrCreate(udpAddress: Hostname) {
+    let key = `${udpAddress.host}:${udpAddress.port}`;
+    let socketEntry = this.sockets.get(key);
+    if (socketEntry === undefined) {
+      socketEntry = new SocketEntry();
+      this.sockets.set(key, socketEntry);
+      let socket = socketEntry.socket;
+      // CLEANUP
+      let teardownConn = () => {
+        socket.destroy();
+        // Ensure we don't delete a new item
+        let maybeOurself = this.sockets.get(key);
+        if (maybeOurself === socketEntry) {
+          this.sockets.delete(key);
+        }
+      };
+      socket.on("error", teardownConn);
+      socket.on("close", teardownConn);
+      // ROUTING
+      decodeUdpFromTcp(socket, this.udpSocket, udpAddress);
+      // STARTUP
+      socket.connect(this.targetPort, "127.0.0.1");
+    }
+    socketEntry.accessedTimeEpochMS = Date.now();
+    return socketEntry.socket;
+  }
+
+  private sweepIntervalMS = 60 * 1000;
+  private sweepIntervalHandle = setTimeout(
+    () => this.sweepExpiredSockets(),
+    this.sweepIntervalMS
+  );
+  // In my experience, the vscode tcp tunnel will usually (but not always) close the connection pretty soon if we stop sending data.
+  private socketExpiryAgeMS = 5 * 60 * 1000;
+  private sweepExpiredSockets() {
+    try {
+      for (let [key, entry] of this.sockets) {
+        let expirationHorizonEpochMS = Date.now() - this.socketExpiryAgeMS;
+        if (entry.accessedTimeEpochMS < expirationHorizonEpochMS) {
+          entry.socket.destroy();
+          this.sockets.delete(key);
+        }
+      }
+    } finally {
+      this.sweepIntervalHandle = setTimeout(
+        () => this.sweepExpiredSockets(),
+        this.sweepIntervalMS
+      );
+    }
+  }
+}
+
+export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
   return new Promise<ProxyServer>((resolve, reject) => {
     let socket = dgram.createSocket("udp4");
+    let tcpSockets = new TcpSocketPool(socket, targetPort);
     // CLEANUP
     socket.on("error", (err) => {
       console.error(`UDP Proxy Server error:\n${err.stack}`);
@@ -23,35 +96,16 @@ export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
       socket.close();
     });
     socket.on("close", () => {
+      tcpSockets.close();
       reject(new Error("Server Closed"));
     });
 
     // ROUTING
     socket.on("message", (msg, rinfo) => {
-      let key = `${rinfo.address}:${rinfo.port}`;
-      let tcpSocket = tcpSockets.get(key);
-      if (tcpSocket === undefined) {
-        let newTcpSocket = new net.Socket();
-        tcpSockets.set(key, newTcpSocket);
-        tcpSocket = newTcpSocket;
-
-        // CLEANUP
-        let teardownConn = () => {
-          newTcpSocket.destroy();
-          tcpSockets.delete(key);
-        };
-        newTcpSocket.on("error", teardownConn);
-        newTcpSocket.on("close", teardownConn);
-
-        // ROUTING
-        decodeUdpFromTcp(newTcpSocket, socket, {
-          host: rinfo.address,
-          port: rinfo.port,
-        });
-
-        // STARTUP
-        newTcpSocket.connect(targetPort, "127.0.0.1");
-      }
+      let tcpSocket = tcpSockets.getOrCreate({
+        host: rinfo.address,
+        port: rinfo.port,
+      });
       encodeDatagramToTcpStream(msg, tcpSocket);
     });
 
@@ -65,9 +119,7 @@ export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
         targetProtocol: "tcp",
         close() {
           socket.close();
-          for (let tcpSocket of tcpSockets.values()) {
-            tcpSocket.destroy();
-          }
+          tcpSockets.close();
         },
       });
     });
