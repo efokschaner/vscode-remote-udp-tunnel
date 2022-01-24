@@ -29,17 +29,20 @@ export function decodeUdpFromTcp(
     let readIndex = 0;
     while (readIndex < data.length) {
       if (bytesToNextHeader === 0) {
-        bytesToNextHeader = data.readUInt16BE(0);
+        bytesToNextHeader = data.readUInt16BE(readIndex);
+        // console.log(`decodeUdpFromTcp: ${bytesToNextHeader}`);
         readIndex += 2;
       }
       let bytesToSend = Math.min(data.length - readIndex, bytesToNextHeader);
-      dstUdpSocket.send(
-        data.slice(readIndex, readIndex + bytesToSend),
-        dstUdpAddress.port,
-        dstUdpAddress.host
-      );
-      readIndex += bytesToSend;
-      bytesToNextHeader -= bytesToSend;
+      if (bytesToSend > 0) {
+        dstUdpSocket.send(
+          data.slice(readIndex, readIndex + bytesToSend),
+          dstUdpAddress.port,
+          dstUdpAddress.host
+        );
+        readIndex += bytesToSend;
+        bytesToNextHeader -= bytesToSend;
+      }
     }
   });
 }
@@ -47,6 +50,7 @@ export function decodeUdpFromTcp(
 export function encodeDatagramToTcpStream(msg: Buffer, tcpSocket: net.Socket) {
   let lengthHeader = Buffer.alloc(2);
   lengthHeader.writeUInt16BE(msg.length);
+  // console.log(`encodeDatagramToTcpStream: ${msg.length}`);
   tcpSocket.write(lengthHeader);
   tcpSocket.write(msg);
 }

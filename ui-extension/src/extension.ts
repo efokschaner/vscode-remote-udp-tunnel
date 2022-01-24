@@ -4,13 +4,12 @@ import * as vscode from "vscode";
 
 import {
   driveTreeViewTitle,
+  getUdpReverseProxyForTcp,
   ObservableArray,
   ProxiesDataProvider,
   ProxyServer,
   ProxyTreeItem,
 } from "remote-udp-tunnel-lib";
-
-import { getUdpReverseProxyForTcp } from "./ui-proxy";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed

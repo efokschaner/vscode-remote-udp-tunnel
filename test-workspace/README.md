@@ -4,7 +4,9 @@ Demonstrates the Remote UDP Tunnel extension in action.
 
 Contains a small UDP echo server and test client for experimentation.
 
-Other testing can be performed with `iperf3`. Eg.
+`test-proxies.js` runs our upd proxy machinery without vscode.
+
+Performance testing can be done with `iperf3`. Eg.
 
 In the remote environment:
 

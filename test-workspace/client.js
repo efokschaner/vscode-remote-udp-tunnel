@@ -1,7 +1,9 @@
-const { pseudoRandomBytes, randomInt } = require("crypto");
 const dgram = require("dgram");
 
-const TYPICALLY_SAFE_MTU_CAP = 1280;
+const packets = require("./packets");
+
+const inspector = require("inspector");
+const isDebugging = inspector.url() !== undefined;
 
 class TimeoutError extends Error {
   constructor(message) {
@@ -12,17 +14,22 @@ class TimeoutError extends Error {
 
 function withTimeout(timeoutMS, promise) {
   return new Promise((resolve, reject) => {
-    setTimeout(() => reject(new TimeoutError("Timed out")), timeoutMS).unref();
+    if (timeoutMS !== Infinity) {
+      setTimeout(
+        () => reject(new TimeoutError("Timed out")),
+        timeoutMS
+      ).unref();
+    }
     promise.then(resolve, reject);
   });
 }
 
 function sendAndReceive(port) {
-  let maxAllowedPacketRttMS = 5000;
+  let minTimeout = 5000;
   let numPackets = 1024;
   let socket = dgram.createSocket("udp4");
   return withTimeout(
-    numPackets * 50 + maxAllowedPacketRttMS,
+    isDebugging ? Infinity : numPackets * 20 + minTimeout,
     new Promise((resolve, reject) => {
       socket.on("error", (err) => {
         reject(err);
@@ -35,41 +42,42 @@ function sendAndReceive(port) {
       });
     })
       .then(async (socket) => {
-        let numFailures = 0;
-        let numSuccesses = 0;
-        for (let i = 0; i < numPackets; ++i) {
-          try {
-            await withTimeout(
-              maxAllowedPacketRttMS, // Individual packet timeout can vary much more than aggregate
-              new Promise((resolve, reject) => {
-                let testPacketLen = randomInt(TYPICALLY_SAFE_MTU_CAP);
-                let testPacket = pseudoRandomBytes(testPacketLen);
-                socket.once("message", (msg) => {
-                  console.log(Date.now(), "receive");
-                  if (msg.equals(testPacket)) {
-                    resolve();
-                  }
-                  reject(
-                    new Error(
-                      `Response (length ${msg.length}) did not match request (length ${testPacket.length}).`
-                    )
-                  );
-                });
-                console.log(Date.now(), "send");
-                socket.send(testPacket, port, "127.0.0.1");
-              })
-            );
-            ++numSuccesses;
-          } catch (e) {
-            if (!(e instanceof TimeoutError)) {
-              throw e;
+        return new Promise((resolve, reject) => {
+          let numValidReceived = 0;
+          let numInvalidReceived = 0;
+          socket.on("message", (msg) => {
+            try {
+              packets.validatePacket(msg);
+              ++numValidReceived;
+            } catch (err) {
+              ++numInvalidReceived;
+              console.error(err);
+            } finally {
+              if ((numValidReceived + numInvalidReceived) % 100 === 0) {
+                console.log(`numValidReceived: ${numValidReceived}`);
+                console.log(`numInvalidReceived: ${numInvalidReceived}`);
+              }
+              if (numValidReceived + numInvalidReceived >= numPackets) {
+                if (numValidReceived / numPackets < 0.99) {
+                  reject(new Error("Failed >1% of packets"));
+                } else {
+                  resolve();
+                }
+              }
             }
-            ++numFailures;
+          });
+          let numSent = 0;
+          function sendMessages() {
+            if (numSent < numPackets) {
+              let packet = packets.createPacket();
+              // console.log(`sendMessages: ${packet.length}`);
+              socket.send(packets.createPacket(), port, "127.0.0.1");
+              ++numSent;
+              setTimeout(sendMessages, 5);
+            }
           }
-        }
-        if (numSuccesses / (numSuccesses + numFailures) < 0.95) {
-          throw new Error("Failed >5% of packets");
-        }
+          sendMessages();
+        });
       })
       .finally(() => socket.close())
   );
@@ -77,7 +85,7 @@ function sendAndReceive(port) {
 
 function testServer(port) {
   let tests = [];
-  for (let i = 0; i < 4; ++i) {
+  for (let i = 0; i < 1; ++i) {
     tests.push(sendAndReceive(port));
   }
   return Promise.all(tests);
@@ -95,6 +103,8 @@ async function main() {
     process.exit(1);
   }
 }
+
+module.exports = { testServer };
 
 if (require.main === module) {
   main();

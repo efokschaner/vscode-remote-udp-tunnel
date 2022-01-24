@@ -1,12 +1,11 @@
 import * as dgram from "dgram";
 import * as net from "net";
-
 import {
-  Hostname,
-  encodeDatagramToTcpStream,
   decodeUdpFromTcp,
+  encodeDatagramToTcpStream,
+  Hostname,
   ProxyServer,
-} from "remote-udp-tunnel-lib";
+} from "./proxies";
 
 function hasOwnProperty<X extends {}, Y extends PropertyKey>(
   obj: X,
@@ -36,6 +35,8 @@ export function getTcpReverseProxyForUdp(target: Hostname) {
     tcpServer.on("connection", (tcpSocket) => {
       // udpSocket interacts with the target udp server
       let udpSocket = dgram.createSocket("udp4");
+      let bindAddress = target.host === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
+      udpSocket.bind(0, bindAddress);
 
       // CLEANUP
       let closeSockets = () => {
@@ -55,8 +56,6 @@ export function getTcpReverseProxyForUdp(target: Hostname) {
 
       // STARTUP
       udpSocket.connect(target.port, target.host);
-      let bindAddress = target.host === "127.0.0.1" ? "127.0.0.1" : "0.0.0.0";
-      udpSocket.bind(0, bindAddress);
     });
 
     // STARTUP

@@ -9,9 +9,8 @@ import {
   ProxyTreeItem,
   ProxiesDataProvider,
   driveTreeViewTitle,
+  getTcpReverseProxyForUdp,
 } from "remote-udp-tunnel-lib";
-
-import { getTcpReverseProxyForUdp } from "./workspace-proxy";
 
 const MIN_PORT_INCLUSIVE = 1;
 const MAX_PORT_EXCLUSIVE = 65536;

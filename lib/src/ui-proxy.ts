@@ -1,13 +1,11 @@
-import * as vscode from "vscode";
 import * as dgram from "dgram";
 import * as net from "net";
-
 import {
-  encodeDatagramToTcpStream,
   decodeUdpFromTcp,
-  ProxyServer,
+  encodeDatagramToTcpStream,
   Hostname,
-} from "remote-udp-tunnel-lib";
+  ProxyServer,
+} from "./proxies";
 
 class SocketEntry {
   public accessedTimeEpochMS = Date.now();
@@ -85,7 +83,7 @@ class TcpSocketPool {
   }
 }
 
-export function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
+function tryGetUdpReverseProxyForTcp(port: number, targetPort: number) {
   return new Promise<ProxyServer>((resolve, reject) => {
     let socket = dgram.createSocket("udp4");
     let tcpSockets = new TcpSocketPool(socket, targetPort);

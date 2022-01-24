@@ -44,6 +44,16 @@
 			"outFiles": [
 				"${workspaceRoot}/out/src"
 			]
+		},
+		{
+			"name": "Test Proxies",
+			"cwd": "${workspaceFolder}/test-workspace",
+			"program": "${workspaceFolder}/test-workspace/test-proxies.js",
+			"request": "launch",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"type": "node"
 		}
 	]
 }
