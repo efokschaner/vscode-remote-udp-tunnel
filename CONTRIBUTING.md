@@ -43,3 +43,5 @@ Set the envvar `VSCE_PAT` with your PAT from azure devops.
 ```
 npm run vscode-publish --workspaces --if-present
 ```
+
+This will automatically bump the versions so dont forget to commit them.
