@@ -85,7 +85,7 @@ function sendAndReceive(port) {
 
 function testServer(port) {
   let tests = [];
-  for (let i = 0; i < 1; ++i) {
+  for (let i = 0; i < 2; ++i) {
     tests.push(sendAndReceive(port));
   }
   return Promise.all(tests);
