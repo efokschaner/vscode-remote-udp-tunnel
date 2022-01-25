@@ -8,7 +8,7 @@
 	"license": "MIT",
 	"publisher": "efokschaner",
 	"displayName": "Remote UDP Tunnel (Local Sub-Component)",
-	"description": "UDP tunnels for VSCode Remote Development",
+	"description": "The local sub-component of the Remote UDP Tunnel extension",
 	"version": "0.0.1",
 	"engines": {
 		"vscode": "^1.63.0"
@@ -56,8 +56,9 @@
 			]
 		}
 	},
+	"icon": "icon.png",
 	"scripts": {
-		"vscode:package": "npm run esbuild-base -- --minify && vsce package --no-dependencies",
+		"vscode:package": "npm run esbuild-base -- --minify && vsce package --no-dependencies --baseContentUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/ui-extension --baseImagesUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/ui-extension",
 		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
 		"build": "npm run esbuild-base -- --sourcemap",
 		"pretest": "npm run build && npm run lint",
