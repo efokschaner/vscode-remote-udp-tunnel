@@ -30,6 +30,16 @@ So far, the high level structure is to put the majority of the UX and behaviour 
 
 ## Publishing
 
+### Make vsix files for testing
+
 ```bash
-npm run vscode:package --workspaces --if-present
+npm run vscode-package --workspaces --if-present
+```
+
+### Pushing to marketplace
+
+Set the envvar `VSCE_PAT` with your PAT from azure devops.
+
+```
+npm run vscode-publish --workspaces --if-present
 ```

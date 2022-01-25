@@ -16,6 +16,9 @@
 	"categories": [
 		"Other"
 	],
+	"extensionDependencies": [
+		"efokschaner.remote-udp-tunnel-ui"
+	],
 	"extensionKind": [
 		"workspace"
 	],
@@ -68,7 +71,9 @@
 	},
 	"icon": "icon.png",
 	"scripts": {
-		"vscode:package": "npm run esbuild-base -- --minify && vsce package --no-dependencies --baseContentUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/workspace-extension --baseImagesUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/workspace-extension",
+		"vscode:prepublish": "rm -rf out && npm run esbuild-base -- --minify",
+		"vscode-publish": "vsce publish --no-dependencies --baseContentUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/workspace-extension --baseImagesUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/workspace-extension",
+		"vscode-package": "vsce package --no-dependencies --baseContentUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/workspace-extension --baseImagesUrl https://github.com/efokschaner/vscode-remote-udp-tunnel/raw/HEAD/workspace-extension",
 		"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
 		"build": "npm run esbuild-base -- --sourcemap",
 		"pretest": "npm run build && npm run lint",
