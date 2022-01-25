@@ -42,7 +42,7 @@
 			"explorer": [
 				{
 					"id": "remoteUdpTunnelWorkspace",
-					"name": "UDP Ports (Remote)",
+					"name": "UDP (Remote)",
 					"when": "remoteName && remoteName !== ''"
 				}
 			]

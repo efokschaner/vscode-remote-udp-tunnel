@@ -36,7 +36,7 @@
 			"explorer": [
 				{
 					"id": "remoteUdpTunnelUi",
-					"name": "UDP Ports (Local)",
+					"name": "UDP (Local)",
 					"when": "remoteName && remoteName !== ''"
 				}
 			]
