@@ -24,6 +24,7 @@
 		"onCommand:remote-udp-tunnel-ui.openLocalProxy"
 	],
 	"main": "./out/extension.js",
+	"api": "none",
 	"contributes": {
 		"commands": [
 			{
