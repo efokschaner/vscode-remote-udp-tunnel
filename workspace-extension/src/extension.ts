@@ -22,25 +22,92 @@ function parsePort(input: string): number | string {
     parsed < MIN_PORT_INCLUSIVE ||
     parsed >= MAX_PORT_EXCLUSIVE
   ) {
-    return `Port number must be an integer between ${MIN_PORT_INCLUSIVE} and ${MAX_PORT_EXCLUSIVE}`;
+    return `Port number must be an integer between ${MIN_PORT_INCLUSIVE} and ${MAX_PORT_EXCLUSIVE} but was "${input}"`;
   }
   return parsed;
 }
 
-function parseTarget(input: string): Hostname | string {
+/**
+ * Port expressions can be:
+ *   A list of ports eg. 2000,2010,2020
+ *   A range of ports eg. 2000-2020
+ *   A start port and a number of ports eg. 2000x2
+ */
+function parsePortExpression(input: string): number[] | string {
+  let parsed = [];
+  if (input.includes("-")) {
+    let parts = input.split("-");
+    if (parts.length > 2) {
+      return 'Too many "-" in port range';
+    }
+    let maybeStartPort = parsePort(parts[0]);
+    if (typeof maybeStartPort === "string") {
+      return maybeStartPort;
+    }
+    let maybeEndPort = parsePort(parts[1]);
+    if (typeof maybeEndPort === "string") {
+      return maybeEndPort;
+    }
+    if (maybeStartPort > maybeEndPort) {
+      return `Start port (${maybeStartPort}) should be lower than end port (${maybeEndPort})`;
+    }
+    // start -> end inclusive
+    for (let i = maybeStartPort; i <= maybeEndPort; ++i) {
+      parsed.push(i);
+    }
+  } else if (input.includes("x")) {
+    let parts = input.split("x");
+    if (parts.length > 2) {
+      return 'Too many "x" in port x count';
+    }
+    let maybeStartPort = parsePort(parts[0]);
+    if (typeof maybeStartPort === "string") {
+      return maybeStartPort;
+    }
+    let maybeCount = parseInt(parts[1]);
+    if (isNaN(maybeCount) || maybeCount < 0) {
+      return `Port count must be positive integer, was "${parts[1]}"`;
+    }
+    for (let i = 0; i < maybeCount; ++i) {
+      parsed.push(maybeStartPort + i);
+    }
+  } else {
+    // Try parse a list of one or more ports
+    for (let portStr of input.split(",")) {
+      let maybePort = parsePort(portStr);
+      if (typeof maybePort === "string") {
+        if (input.includes(",")) {
+          return (
+            maybePort +
+            "\nPort lists must be comma-separated port numbers (eg. 2001,9042,9099)"
+          );
+        }
+        return maybePort;
+      }
+      parsed.push(maybePort);
+    }
+  }
+  return parsed;
+}
+
+function parseTarget(input: string): Hostname[] | string {
   let parts = input.split(":");
   if (parts.length > 2) {
     return 'Too many ":" in address';
   }
-  let maybePort = parsePort(parts[parts.length - 1]);
-  if (typeof maybePort === "string") {
-    return maybePort;
+  let maybePorts = parsePortExpression(parts[parts.length - 1]);
+  if (typeof maybePorts === "string") {
+    return maybePorts;
+  }
+  const limit = 1000;
+  if (maybePorts.length > limit) {
+    return `Number of ports specified (${maybePorts.length}) exceeds the limit (${limit})`;
   }
   let host = "127.0.0.1";
   if (parts.length > 1) {
     host = parts[0];
   }
-  return { host, port: maybePort };
+  return maybePorts.map((port) => ({ host, port }));
 }
 
 function validateTarget(input: string): string | undefined {
@@ -50,17 +117,26 @@ function validateTarget(input: string): string | undefined {
   }
 }
 
-async function resolveTargetParam(targetParam?: unknown): Promise<Hostname> {
+/**
+ *
+ * @returns undefined if the dialog was canceled
+ */
+async function resolveTargetParam(
+  targetParam?: unknown
+): Promise<Hostname[] | undefined> {
   if (targetParam === undefined) {
     targetParam = await vscode.window.showInputBox({
-      prompt: "Port number or address (eg. 3000 or 10.10.10.10:2000)",
+      prompt:
+        'Port number or address (eg. "3000" or "10.10.10.10:2000"). ' +
+        'Multiple ports can be specified through a list (eg. "2001,2002,2003"), a range (eg. "2001-2003"), or a count eg. ("2001x3")',
       validateInput: validateTarget,
     });
     if (targetParam === undefined) {
-      throw new Error("No Port number or address provided");
+      // Dialog was canceled
+      return undefined;
     }
   }
-  let target: Hostname | undefined = undefined;
+  let target: Hostname[] | undefined = undefined;
   if (typeof targetParam === "string") {
     let maybeTarget = parseTarget(targetParam);
     if (typeof maybeTarget === "string") {
@@ -68,11 +144,10 @@ async function resolveTargetParam(targetParam?: unknown): Promise<Hostname> {
     }
     target = maybeTarget;
   } else if (typeof targetParam === "number") {
-    target = { host: "127.0.0.1", port: targetParam };
+    target = [{ host: "127.0.0.1", port: targetParam }];
   } else if (targetParam instanceof ProxyTreeItem) {
-    target = targetParam.proxy.target;
+    target = [targetParam.proxy.target];
   }
-
   if (target === undefined) {
     throw new Error("Could not interpret port number or address");
   }
@@ -99,53 +174,57 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "remote-udp-tunnel.forwardPort",
       async (targetParam?: unknown) => {
-        let target = await resolveTargetParam(targetParam);
-        let proxy = await getTcpReverseProxyForUdp(target);
-        let cleanup = new Array<{ (): void }>(() => proxy.close());
-        try {
-          let message = `Proxy to ${target.host}:${target.port}/udp listening on ${proxy.listenPort}/tcp`;
-          console.log(message);
-          // Create tunnel
-          // The benefit of this method vs remote.tunnel.forwardCommandPalette is that
-          // we can discover the port which was allocated on the ui-side
-          let externalUri = await vscode.env.asExternalUri(
-            vscode.Uri.from({
-              scheme: "http",
-              authority: `127.0.0.1:${proxy.listenPort}`,
-            })
-          );
-          cleanup.push(() => {
-            // See https://github.com/microsoft/vscode/blob/9b75bd1f813e683bf46897d85387089ec083fb24/src/vs/workbench/contrib/remote/browser/tunnelView.ts#L1189
-            vscode.commands.executeCommand("remote.tunnel.closeInline", {
-              remoteHost: "127.0.0.1",
-              remotePort: proxy.listenPort,
+        let targets = await resolveTargetParam(targetParam);
+        if (targets === undefined) {
+          // Dialog was canceled
+          return undefined;
+        }
+        for (let target of targets) {
+          let proxy = await getTcpReverseProxyForUdp(target);
+          let cleanup = new Array<{ (): void }>(() => proxy.close());
+          try {
+            // Create tunnel
+            // The benefit of this method vs remote.tunnel.forwardCommandPalette is that
+            // we can discover the port which was allocated on the ui-side
+            let externalUri = await vscode.env.asExternalUri(
+              vscode.Uri.from({
+                scheme: "http",
+                authority: `127.0.0.1:${proxy.listenPort}`,
+              })
+            );
+            cleanup.push(() => {
+              // See https://github.com/microsoft/vscode/blob/9b75bd1f813e683bf46897d85387089ec083fb24/src/vs/workbench/contrib/remote/browser/tunnelView.ts#L1189
+              vscode.commands.executeCommand("remote.tunnel.closeInline", {
+                remoteHost: "127.0.0.1",
+                remotePort: proxy.listenPort,
+              });
             });
-          });
-          let uiTcpTunnelPort = parseInt(externalUri.authority.split(":")[1]);
-          let selectedUiUdpPort = await vscode.commands.executeCommand(
-            "remote-udp-tunnel-ui.openLocalProxy",
-            target.port,
-            uiTcpTunnelPort
-          );
-          cleanup.push(async () => {
-            await vscode.commands.executeCommand(
-              "remote-udp-tunnel-ui.closeLocalProxy",
+            let uiTcpTunnelPort = parseInt(externalUri.authority.split(":")[1]);
+            let selectedUiUdpPort = await vscode.commands.executeCommand(
+              "remote-udp-tunnel-ui.openLocalProxy",
+              target.port,
               uiTcpTunnelPort
             );
-          });
-          vscode.window.showInformationMessage(
-            `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port}/udp in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.listenPort}`
-          );
-          let onProxyCloseCleanup = cleanup;
-          cleanup = [];
-          proxies.push({
-            ...proxy,
-            close() {
-              onProxyCloseCleanup.forEach((f) => f());
-            },
-          });
-        } finally {
-          cleanup.forEach((f) => f());
+            cleanup.push(async () => {
+              await vscode.commands.executeCommand(
+                "remote-udp-tunnel-ui.closeLocalProxy",
+                uiTcpTunnelPort
+              );
+            });
+            vscode.window.showInformationMessage(
+              `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port}/udp in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.listenPort}`
+            );
+            let onProxyCloseCleanup = cleanup;
+            cleanup = [];
+            proxies.push({
+              ...proxy,
+              close() {
+                onProxyCloseCleanup.forEach((f) => f());
+              },
+            });
+          } finally {
+            cleanup.forEach((f) => f());
+          }
         }
       }
     )
@@ -155,14 +234,20 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "remote-udp-tunnel.stopForwardingPort",
       async (targetParam?: unknown) => {
-        let target = await resolveTargetParam(targetParam);
-        for (let [index, proxy] of proxies.entries()) {
-          if (
-            proxy.target.host === target.host &&
-            proxy.target.port === target.port
-          ) {
-            proxy.close();
-            proxies.splice(index, 1);
+        let targets = await resolveTargetParam(targetParam);
+        if (targets === undefined) {
+          // Dialog was canceled
+          return undefined;
+        }
+        for (let target of targets) {
+          for (let [index, proxy] of proxies.entries()) {
+            if (
+              proxy.target.host === target.host &&
+              proxy.target.port === target.port
+            ) {
+              proxy.close();
+              proxies.splice(index, 1);
+            }
           }
         }
       }
