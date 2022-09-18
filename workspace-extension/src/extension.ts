@@ -79,6 +79,48 @@ async function resolveTargetParam(targetParam?: unknown): Promise<Hostname> {
   return target;
 }
 
+function validateTargetRange(input: string): string | undefined {
+  let maybeParsed = input.split(",");
+  if (maybeParsed.length !== 2) {
+    return `Expected 2 numbers seperated by a comma, not ${maybeParsed.length}`;
+  }
+}
+
+async function resolveTargetRangeParam(
+  targetParam?: unknown,
+): Promise<Hostname[]> {
+  if (targetParam === undefined) {
+    targetParam = await vscode.window.showInputBox({
+      prompt:
+        "Port number and port count seperated by a comma (eg. 1000,25 or 8080,4)",
+      validateInput: validateTargetRange,
+    });
+    if (targetParam === undefined) {
+      throw new Error("No port number specified");
+    }
+  }
+  let targets: Hostname[] = [];
+  if (typeof targetParam === "string") {
+    let maybeTarget = targetParam.split(",");
+    if (maybeTarget.length === 2) {
+      let maybeTargetStart = parsePort(maybeTarget[0]);
+      let maybeTargetCount = parsePort(maybeTarget[1]);
+      if (
+        typeof maybeTargetStart === "number" &&
+        typeof maybeTargetCount === "number"
+      ) {
+        for (let i = 0; i < maybeTargetCount; i++) {
+          targets.push({
+            host: "127.0.0.1",
+            port: maybeTargetStart + i,
+          });
+        }
+      }
+    }
+  }
+  return targets;
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -104,7 +146,6 @@ export function activate(context: vscode.ExtensionContext) {
         let cleanup = new Array<{ (): void }>(() => proxy.close());
         try {
           let message = `Proxy to ${target.host}:${target.port}/udp listening on ${proxy.listenPort}/tcp`;
-          console.log(message);
           // Create tunnel
           // The benefit of this method vs remote.tunnel.forwardCommandPalette is that
           // we can discover the port which was allocated on the ui-side
@@ -112,7 +153,7 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.Uri.from({
               scheme: "http",
               authority: `127.0.0.1:${proxy.listenPort}`,
-            })
+            }),
           );
           cleanup.push(() => {
             // See https://github.com/microsoft/vscode/blob/9b75bd1f813e683bf46897d85387089ec083fb24/src/vs/workbench/contrib/remote/browser/tunnelView.ts#L1189
@@ -125,16 +166,16 @@ export function activate(context: vscode.ExtensionContext) {
           let selectedUiUdpPort = await vscode.commands.executeCommand(
             "remote-udp-tunnel-ui.openLocalProxy",
             target.port,
-            uiTcpTunnelPort
+            uiTcpTunnelPort,
           );
           cleanup.push(async () => {
             await vscode.commands.executeCommand(
               "remote-udp-tunnel-ui.closeLocalProxy",
-              uiTcpTunnelPort
+              uiTcpTunnelPort,
             );
           });
           vscode.window.showInformationMessage(
-            `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port}/udp in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.listenPort}`
+            `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port}/udp in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.listenPort}`,
           );
           let onProxyCloseCleanup = cleanup;
           cleanup = [];
@@ -147,8 +188,65 @@ export function activate(context: vscode.ExtensionContext) {
         } finally {
           cleanup.forEach((f) => f());
         }
-      }
-    )
+      },
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "remote-udp-tunnel.forwardPortRange",
+      async (targetParam?: unknown) => {
+        let targets = await resolveTargetRangeParam(targetParam);
+        for (let target of targets) {
+          let proxy = await getTcpReverseProxyForUdp(target);
+          let cleanup = new Array<{ (): void }>(() => proxy.close());
+          try {
+            let message = `Proxy to ${target.host}:${target.port}/udp listening on ${proxy.listenPort}/tcp`;
+            // Create tunnel
+            // The benefit of this method vs remote.tunnel.forwardCommandPalette is that
+            // we can discover the port which was allocated on the ui-side
+            let externalUri = await vscode.env.asExternalUri(
+              vscode.Uri.from({
+                scheme: "http",
+                authority: `127.0.0.1:${proxy.listenPort}`,
+              }),
+            );
+            cleanup.push(() => {
+              // See https://github.com/microsoft/vscode/blob/9b75bd1f813e683bf46897d85387089ec083fb24/src/vs/workbench/contrib/remote/browser/tunnelView.ts#L1189
+              vscode.commands.executeCommand("remote.tunnel.closeInline", {
+                remoteHost: "127.0.0.1",
+                remotePort: proxy.listenPort,
+              });
+            });
+            let uiTcpTunnelPort = parseInt(externalUri.authority.split(":")[1]);
+            let selectedUiUdpPort = await vscode.commands.executeCommand(
+              "remote-udp-tunnel-ui.openLocalProxy",
+              target.port,
+              uiTcpTunnelPort,
+            );
+            cleanup.push(async () => {
+              await vscode.commands.executeCommand(
+                "remote-udp-tunnel-ui.closeLocalProxy",
+                uiTcpTunnelPort,
+              );
+            });
+            vscode.window.showInformationMessage(
+              `${selectedUiUdpPort}/udp forwarded to ${target.host}:${target.port}/udp in the remote environment, via the TCP tunnel ${uiTcpTunnelPort}->${proxy.listenPort}`,
+            );
+            let onProxyCloseCleanup = cleanup;
+            cleanup = [];
+            proxies.push({
+              ...proxy,
+              close() {
+                onProxyCloseCleanup.forEach((f) => f());
+              },
+            });
+          } finally {
+            cleanup.forEach((f) => f());
+          }
+        }
+      },
+    ),
   );
 
   context.subscriptions.push(
@@ -165,8 +263,8 @@ export function activate(context: vscode.ExtensionContext) {
             proxies.splice(index, 1);
           }
         }
-      }
-    )
+      },
+    ),
   );
 }
 
