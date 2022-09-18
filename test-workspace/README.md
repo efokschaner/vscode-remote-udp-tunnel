@@ -4,6 +4,15 @@ Demonstrates the Remote UDP Tunnel extension in action.
 
 Contains a small UDP echo server and test client for experimentation.
 
+```
+# In remote environment
+node server.js 9090 9091 ...
+
+# On UI host
+node client.js 9090
+node client.js 9091
+```
+
 `test-proxies.js` runs our upd proxy machinery without vscode.
 
 Performance testing can be done with `iperf3`. Eg.

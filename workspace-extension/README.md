@@ -30,7 +30,7 @@ If, as I did, you find yourself working with UDP servers on ephemeral / dynamic 
 - The proxy decoder has a small chance of fragmenting some UDP packets. I have not observed this in practice so far.
 - The "Time to First Byte" for a new client sending packets can be over a second as the VS Code TCP tunnel itself has a very slow handshake to complete on each new connection.
 - The extension does not currently auto-detect open UDP ports and forward them, as the TCP version built in to vscode does. I may add this feature.
-- This extension won't work with vscode running in browser-sandboxed scenarios (such as codespaces) where the extension cannot open a UDP port for you to access.
+- This extension won't work with vscode running in browser-sandboxed scenarios (such as ["Visual Studio Code for the Web"](https://vscode.dev/)) where the extension cannot open a UDP port for you to access.
 
 ## Extension Settings
 
@@ -41,3 +41,7 @@ This extension exposes no settings.
 ### 0.0.1
 
 Alpha release. Good Luck, Have Fun!
+
+### 0.0.5
+
+**Feature:** Open multiple ports with a single command. Multiple ports can be specified as a list (eg. "2001,2002,2003"), a range (eg. "2001-2003"), or a count eg. ("2001x3"). Thanks to [@Danielv123](https://github.com/Danielv123).

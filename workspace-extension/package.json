@@ -25,7 +25,6 @@
 	"activationEvents": [
 		"onStartupFinished",
 		"onCommand:remote-udp-tunnel.forwardPort",
-		"onCommand:remote-udp-tunnel.forwardPortRange",
 		"onCommand:remote-udp-tunnel.stopForwardingPort"
 	],
 	"main": "./out/extension.js",
@@ -34,11 +33,6 @@
 			{
 				"command": "remote-udp-tunnel.forwardPort",
 				"title": "Forward a Port",
-				"category": "Remote UDP Tunnel"
-			},
-			{
-				"command": "remote-udp-tunnel.forwardPortRange",
-				"title": "Forward range of ports",
 				"category": "Remote UDP Tunnel"
 			},
 			{
@@ -60,10 +54,6 @@
 			"commandPalette": [
 				{
 					"command": "remote-udp-tunnel.forwardPort",
-					"when": "remoteName && remoteName !== ''"
-				},
-				{
-					"command": "remote-udp-tunnel.forwardPortRange",
 					"when": "remoteName && remoteName !== ''"
 				},
 				{

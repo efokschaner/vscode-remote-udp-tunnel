@@ -34,11 +34,14 @@ function serve(port) {
 }
 
 function main() {
-  let port = 0;
+  let ports = [0];
   if (process.argv.length > 2) {
-    port = parseInt(process.argv[2]);
+    ports = [];
+    for (let i = 2; i < process.argv.length; ++i) {
+      ports.push(parseInt(process.argv[i]));
+    }
   }
-  serve(port);
+  ports.forEach(serve);
 }
 
 module.exports = { serve };
